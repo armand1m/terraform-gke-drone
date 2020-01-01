@@ -1,4 +1,4 @@
-PROJECT_NAME="xenon-shard-259622"
+PROJECT_NAME=$(gcloud config get-value project)
 TERRAFORM_SERVICE_ACCOUNT_NAME="terraform-runner"
 TERRAFORM_SERVICE_ACCOUNT_DISPLAY_NAME="Terraform Runner"
 GCLOUD_REGION="us-central1"

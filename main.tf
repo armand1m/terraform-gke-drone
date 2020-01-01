@@ -1,32 +1,50 @@
 provider "google" {}
+provider "random" {}
 provider "kubernetes" {
-  host = "https://${google_container_cluster.ci.endpoint}"
+  host                   = google_container_cluster.ci.endpoint
+  username               = google_container_cluster.ci.master_auth[0].username
+  password               = google_container_cluster.ci.master_auth[0].password
+  client_key             = base64decode(google_container_cluster.ci.master_auth[0].client_key)
+  client_certificate     = base64decode(google_container_cluster.ci.master_auth[0].client_certificate)
+  cluster_ca_certificate = base64decode(google_container_cluster.ci.master_auth[0].cluster_ca_certificate)
 }
 
-locals {
-  drone_server_proto = "https"
-  drone_server_host = "drone.armand1m.dev"
-  drone_github_client_id = "a5169671aa20c343320e"
-  drone_github_client_secret = "f5159ddadd119506d119d43b2237f97ddef57fc5"
-  drone_server_secret = "b941fef7954cfeb96f5ed91f53824c0d"
+variable "domain_name" { type = string }
+variable "drone_github_client_id" { type = string }
+variable "drone_github_client_secret" { type = string }
+
+resource "random_password" "drone_server_secret" {
+  length  = 16
+  special = false
+}
+
+resource "random_password" "cluster_password" {
+  length  = 16
+  special = true
 }
 
 resource "google_container_cluster" "ci" {
-  name = "ci-cluster"
-  # We can't create a cluster with no node pool defined, but we want to only use
-  # separately managed node pools. So we create the smallest possible default
-  # node pool and immediately delete it.
-  initial_node_count = 1
+  name                     = "ci-cluster"
+  initial_node_count       = 1
   remove_default_node_pool = true
+
+  master_auth {
+    username = "gke-master"
+    password = random_password.cluster_password.result
+
+    client_certificate_config {
+      issue_client_certificate = true
+    }
+  }
 }
 
 resource "google_container_node_pool" "primary_preemptible_nodes" {
-  name = "ci-cluster-pool"
-  cluster = google_container_cluster.ci.name
+  name       = "ci-cluster-pool"
+  cluster    = google_container_cluster.ci.name
   node_count = 1
 
   node_config {
-    preemptible = true
+    preemptible  = true
     machine_type = "n1-standard-1"
 
     metadata = {
@@ -46,6 +64,9 @@ resource "google_compute_disk" "ci" {
 }
 
 resource "kubernetes_namespace" "drone" {
+  # This is needed for tearing it down
+  depends_on = [google_container_node_pool.primary_preemptible_nodes]
+
   metadata {
     name = "drone"
   }
@@ -53,34 +74,34 @@ resource "kubernetes_namespace" "drone" {
 
 resource "kubernetes_secret" "drone" {
   metadata {
-    name = "drone-secrets"
+    name      = "drone-secrets"
     namespace = kubernetes_namespace.drone.metadata[0].name
   }
 
   data = {
-    server_secret = local.drone_server_secret
+    server_secret = random_password.drone_server_secret.result
   }
 }
 
 resource "kubernetes_config_map" "drone" {
   metadata {
-    name = "drone-config"
+    name      = "drone-config"
     namespace = kubernetes_namespace.drone.metadata[0].name
   }
 
   data = {
-    drone_agents_enabled = true
-    drone_github_server = "https://github.com"
-    drone_github_client_id = local.drone_github_client_id
-    drone_github_client_secret = local.drone_github_client_secret
-    drone_server_host = local.drone_server_host
-    drone_server_proto = local.drone_server_proto
+    drone_agents_enabled       = true
+    drone_server_proto         = "https"
+    drone_server_host          = "drone.${var.domain_name}"
+    drone_github_server        = "https://github.com"
+    drone_github_client_id     = var.drone_github_client_id
+    drone_github_client_secret = var.drone_github_client_secret
   }
 }
 
 resource "kubernetes_service" "example" {
   metadata {
-    name = "terraform-example"
+    name      = "terraform-example"
     namespace = kubernetes_namespace.drone.metadata[0].name
   }
 
@@ -100,7 +121,7 @@ resource "kubernetes_service" "example" {
 
 resource "kubernetes_deployment" "example" {
   metadata {
-    name = "terraform-example"
+    name      = "terraform-example"
     namespace = kubernetes_namespace.drone.metadata[0].name
     labels = {
       app = "MyExampleApp"
@@ -135,8 +156,8 @@ resource "kubernetes_deployment" "example" {
 
 resource "google_dns_managed_zone" "main" {
   name        = "main-zone"
-  dns_name    = "armand1m.dev."
-  description = "Main DNS zone"
+  dns_name    = "${var.domain_name}."
+  description = "Main DNS Zone"
 }
 
 resource "google_dns_record_set" "cname" {

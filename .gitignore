@@ -1,3 +1,4 @@
 .gcloud-credentials
 .terraform
 *.tfstate*
+*.tfvars
