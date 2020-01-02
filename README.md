@@ -1,6 +1,8 @@
 # Drone CI on GCP with Terraform and Kubernetes
 
-This is a terraform definition with some scripts to make it easy to bootstrap Drone CI into a GKE cluster with DNS management included.
+This is a terraform definition with some scripts to make it easy to bootstrap Drone CI into a GKE cluster.
+
+This will expose your Drone CI server in a public IP without TLS. Terraform will output the IP for you.
 
 The scripts can:
 
@@ -14,8 +16,6 @@ The terraform definition can provision:
     - [x] Separate managed node pool
         - [x] Using Preemptible Instances
  - [x] GCE Persistent Disk to store Drone CI master configuration and data
- - [x] GCP Cloud DNS Managed Zone for the variable `domain_name`
- - [x] GCP DNS Record Set for the CNAME of your `domain_name`
  - [x] All Kubernetes resources Drone CI needs to run:
     - [x] Namespace `drone`
     - [x] Secret `drone-secrets` with the RPC secret stored
@@ -26,13 +26,11 @@ The terraform definition can provision:
         - [x] Environment Variables loaded from Secret
         - [x] Volumes mounted from GCE Persistent Disk
     - [x] Service as an ingress load balancer to the Drone Server
-    - [x] DNS Record Set at `drone.${var.domain_name}` to point to the ingress load balancer.
     - [x] Role for the Drone Runner
     - [x] Role Binding for the Drone Runner
     - [x] Service Account for the Drone Runner
     - [x] A deployment for the Drone Runner
         - [x] With Service Account binded
-    - [ ] Cert Manager for automatic SSL certificate generation
 
 ## Prepare the environment
 
@@ -40,7 +38,8 @@ The terraform definition can provision:
 
 ```sh
 cat > ./variables.tfvars <<EOL
-domain_name                = "your.domain.here"
+gcloud_region              = "us-central1"
+gcloud_zone                = "us-central1-c"
 drone_github_client_id     = "github-client-id"
 drone_github_client_secret = "github-client-secret"
 EOL

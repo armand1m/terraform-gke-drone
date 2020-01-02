@@ -1,5 +1,10 @@
-provider "google" {}
 provider "random" {}
+
+provider "google" {
+  region = var.gcloud_region
+  zone   = var.gcloud_zone
+}
+
 provider "kubernetes" {
   host                   = google_container_cluster.ci.endpoint
   username               = google_container_cluster.ci.master_auth[0].username
@@ -9,7 +14,8 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(google_container_cluster.ci.master_auth[0].cluster_ca_certificate)
 }
 
-variable "domain_name" { type = string }
+variable "gcloud_region" { type = string }
+variable "gcloud_zone" { type = string }
 variable "drone_github_client_id" { type = string }
 variable "drone_github_client_secret" { type = string }
 
@@ -68,32 +74,6 @@ resource "google_compute_disk" "ci" {
   size = 5
 }
 
-resource "google_dns_managed_zone" "main" {
-  name        = "main-zone"
-  dns_name    = "${var.domain_name}."
-  description = "Main DNS Zone"
-}
-
-resource "google_dns_record_set" "cname" {
-  name         = "www.${google_dns_managed_zone.main.dns_name}"
-  managed_zone = google_dns_managed_zone.main.name
-  type         = "CNAME"
-  ttl          = 300
-  rrdatas      = ["www.${google_dns_managed_zone.main.dns_name}"]
-}
-
-resource "google_dns_record_set" "drone" {
-  name = "drone.${google_dns_managed_zone.main.dns_name}"
-  type = "A"
-  ttl  = 300
-
-  managed_zone = google_dns_managed_zone.main.name
-
-  rrdatas = [
-    kubernetes_service.drone_server.load_balancer_ingress[0].ip
-  ]
-}
-
 resource "kubernetes_namespace" "drone" {
   # This is needed for tearing it down
   depends_on = [google_container_node_pool.primary_preemptible_nodes]
@@ -122,8 +102,8 @@ resource "kubernetes_config_map" "drone" {
 
   data = {
     drone_agents_enabled       = true
-    drone_server_proto         = "https"
-    drone_server_host          = "drone.${var.domain_name}"
+    drone_server_proto         = "http"
+    drone_server_host          = kubernetes_service.drone_server.load_balancer_ingress[0].ip
     drone_github_server        = "https://github.com"
     drone_github_client_id     = var.drone_github_client_id
     drone_github_client_secret = var.drone_github_client_secret
@@ -334,7 +314,7 @@ resource "kubernetes_role_binding" "drone_runner" {
 
 resource "kubernetes_deployment" "drone_runner" {
   metadata {
-    name = "drone-runner"
+    name      = "drone-runner"
     namespace = kubernetes_namespace.drone.metadata[0].name
     labels = {
       "app.kubernetes.io/name" = "drone-runner"
@@ -358,7 +338,7 @@ resource "kubernetes_deployment" "drone_runner" {
       }
 
       spec {
-        service_account_name = kubernetes_service_account.drone_runner.metadata[0].name
+        service_account_name            = kubernetes_service_account.drone_runner.metadata[0].name
         automount_service_account_token = true
 
         container {

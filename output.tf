@@ -14,18 +14,6 @@ output "cluster_node_pools" {
   value = google_container_cluster.ci.node_pool
 }
 
-output "cloud_dns_name" {
-  value = google_dns_managed_zone.main.dns_name
-}
-
-output "cloud_dns_name_servers" {
-  value = google_dns_managed_zone.main.name_servers
-}
-
-output "cloud_dns_drone_record_set_name" {
-  value = google_dns_record_set.drone.name
-}
-
-output "cloud_dns_drone_record_set_rrdatas" {
-  value = google_dns_record_set.drone.rrdatas
+output "drone_server_external_ip" {
+  value = kubernetes_service.drone_server.load_balancer_ingress[0].ip
 }
