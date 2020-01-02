@@ -1,6 +1,6 @@
 # Drone CI on GCP with Terraform and Kubernetes
 
-This is a terraform definition with some scripts to make it easy to bootstrap Drone CI into a GKE cluster.
+This is a terraform definition with some scripts to make it easy to bootstrap Drone CI into a GKE cluster using Github as the default VCS and `drone-runner-kube` as a runner.
 
 This will expose your Drone CI server in a public IP without TLS. Terraform will output the IP for you.
 
@@ -34,9 +34,23 @@ The terraform definition can provision:
     - [x] A deployment for the Drone Runner
         - [x] With Service Account binded
 
-## Prepare the environment
+## Next steps
 
-### Set variables first
+ - [ ] Run workload in different k8s namespace
+ - [ ] Enable horizontal and vertical autoscaling
+
+## Installing it
+
+### Setup a Github OAuth Application
+
+Create a Github OAuth Application so you can have a Github Client ID and a Github Client Secret.
+
+<img alt="github-oauth" src="https://github.com/armand1m/terraform-gke-drone/blob/master/.github/assets/drone-oauth-config.png?raw=true" />
+
+### Set terraform variables
+
+Change the region and the zones accordingly.
+Also, change it to use your github client id and secrets here.
 
 ```sh
 cat > ./variables.tfvars <<EOL
@@ -54,7 +68,7 @@ gcloud auth login
 gcloud config set project [PROJECT-ID]
 ```
 
-## Bringing it up
+### Bring it up
 
 ```sh
 source ./scripts/_shared.sh
@@ -66,6 +80,26 @@ terraform init
 terraform plan -var-file=./variables.tfvars
 terraform apply -var-file=./variables.tfvars
 ```
+
+### Edit Github OAuth to use generated IP Address
+
+Terraform will provision a Static IP Address for you in GCE and will output it.
+
+It will look like this:
+
+```ini
+cluster_endpoint = 34.30.4.746
+cluster_node_pools = []
+cluster_password = blablablbla
+cluster_username = drone-cluster-master
+drone_server_external_ip = 32.42.37.14
+```
+
+Edit your Github OAuth application to use the `drone_server_external_ip` output.
+
+### Access and enjoy
+
+<img alt="drone-homepage" src="https://github.com/armand1m/terraform-gke-drone/blob/master/.github/assets/drone-homepage.png?raw=true" />
 
 ## Tearing it down
 

@@ -6,12 +6,12 @@ provider "google" {
 }
 
 provider "kubernetes" {
-  host                   = google_container_cluster.ci.endpoint
-  username               = google_container_cluster.ci.master_auth[0].username
-  password               = google_container_cluster.ci.master_auth[0].password
-  client_key             = base64decode(google_container_cluster.ci.master_auth[0].client_key)
-  client_certificate     = base64decode(google_container_cluster.ci.master_auth[0].client_certificate)
-  cluster_ca_certificate = base64decode(google_container_cluster.ci.master_auth[0].cluster_ca_certificate)
+  host                   = google_container_cluster.drone.endpoint
+  username               = google_container_cluster.drone.master_auth[0].username
+  password               = google_container_cluster.drone.master_auth[0].password
+  client_key             = base64decode(google_container_cluster.drone.master_auth[0].client_key)
+  client_certificate     = base64decode(google_container_cluster.drone.master_auth[0].client_certificate)
+  cluster_ca_certificate = base64decode(google_container_cluster.drone.master_auth[0].cluster_ca_certificate)
 }
 
 variable "gcloud_region" { type = string }
@@ -20,6 +20,8 @@ variable "drone_github_client_id" { type = string }
 variable "drone_github_client_secret" { type = string }
 
 locals {
+  drone_server_appname = "drone-server"
+  drone_runner_appname = "drone-runner"
   drone_secrets_name   = "drone-secrets"
   drone_configmap_name = "drone-config"
 }
@@ -34,13 +36,13 @@ resource "random_password" "cluster_password" {
   special = true
 }
 
-resource "google_container_cluster" "ci" {
-  name                     = "ci-cluster"
+resource "google_container_cluster" "drone" {
+  name                     = "drone-cluster"
   initial_node_count       = 1
   remove_default_node_pool = true
 
   master_auth {
-    username = "gke-master"
+    username = "drone-cluster-master"
     password = random_password.cluster_password.result
 
     client_certificate_config {
@@ -50,8 +52,8 @@ resource "google_container_cluster" "ci" {
 }
 
 resource "google_container_node_pool" "primary_preemptible_nodes" {
-  name       = "ci-cluster-pool"
-  cluster    = google_container_cluster.ci.name
+  name       = "drone-cluster-pool"
+  cluster    = google_container_cluster.drone.name
   node_count = 1
 
   node_config {
@@ -69,12 +71,12 @@ resource "google_container_node_pool" "primary_preemptible_nodes" {
   }
 }
 
-resource "google_compute_disk" "ci" {
+resource "google_compute_disk" "drone_server" {
   name = "drone-server-sqlite"
   size = 5
 }
 
-resource "google_compute_address" "drone_server_ip" {
+resource "google_compute_address" "drone_server" {
   name = "drone-server-external-address"
 }
 
@@ -107,7 +109,7 @@ resource "kubernetes_config_map" "drone" {
   data = {
     drone_agents_enabled       = true
     drone_server_proto         = "http"
-    drone_server_host          = google_compute_address.drone_server_ip.address
+    drone_server_host          = google_compute_address.drone_server.address
     drone_github_server        = "https://github.com"
     drone_github_client_id     = var.drone_github_client_id
     drone_github_client_secret = var.drone_github_client_secret
@@ -117,10 +119,10 @@ resource "kubernetes_config_map" "drone" {
 
 resource "kubernetes_deployment" "drone_server" {
   metadata {
-    name      = "drone-server"
+    name      = local.drone_server_appname
     namespace = kubernetes_namespace.drone.metadata[0].name
     labels = {
-      app = "DroneServer"
+      "app.kubernetes.io/name" = local.drone_server_appname
     }
   }
 
@@ -129,20 +131,20 @@ resource "kubernetes_deployment" "drone_server" {
 
     selector {
       match_labels = {
-        app = "DroneServer"
+        "app.kubernetes.io/name" = local.drone_server_appname
       }
     }
 
     template {
       metadata {
         labels = {
-          app = "DroneServer"
+          "app.kubernetes.io/name" = local.drone_server_appname
         }
       }
 
       spec {
         container {
-          name  = "drone-server"
+          name  = local.drone_server_appname
           image = "drone/drone:1"
 
           port {
@@ -227,15 +229,15 @@ resource "kubernetes_deployment" "drone_server" {
           }
 
           volume_mount {
-            name       = google_compute_disk.ci.name
+            name       = google_compute_disk.drone_server.name
             mount_path = "/var/lib/drone"
           }
         }
 
         volume {
-          name = google_compute_disk.ci.name
+          name = google_compute_disk.drone_server.name
           gce_persistent_disk {
-            pd_name = google_compute_disk.ci.name
+            pd_name = google_compute_disk.drone_server.name
             fs_type = "ext4"
           }
         }
@@ -246,15 +248,16 @@ resource "kubernetes_deployment" "drone_server" {
 
 resource "kubernetes_service" "drone_server" {
   metadata {
-    name      = "drone-server-service"
+    name      = "${local.drone_server_appname}-service"
     namespace = kubernetes_namespace.drone.metadata[0].name
   }
 
   spec {
-    load_balancer_ip = google_compute_address.drone_server_ip.address
+    type = "LoadBalancer"
+    load_balancer_ip = google_compute_address.drone_server.address
 
     selector = {
-      app = "${kubernetes_deployment.drone_server.metadata[0].labels.app}"
+      "app.kubernetes.io/name" = local.drone_server_appname
     }
 
     port {
@@ -268,8 +271,6 @@ resource "kubernetes_service" "drone_server" {
       port        = 443
       target_port = 443
     }
-
-    type = "LoadBalancer"
   }
 }
 
@@ -320,10 +321,10 @@ resource "kubernetes_role_binding" "drone_runner" {
 
 resource "kubernetes_deployment" "drone_runner" {
   metadata {
-    name      = "drone-runner"
+    name      = local.drone_runner_appname
     namespace = kubernetes_namespace.drone.metadata[0].name
     labels = {
-      "app.kubernetes.io/name" = "drone-runner"
+      "app.kubernetes.io/name" = local.drone_runner_appname
     }
   }
 
@@ -332,14 +333,14 @@ resource "kubernetes_deployment" "drone_runner" {
 
     selector {
       match_labels = {
-        "app.kubernetes.io/name" = "drone-runner"
+        "app.kubernetes.io/name" = local.drone_runner_appname
       }
     }
 
     template {
       metadata {
         labels = {
-          "app.kubernetes.io/name" = "drone-runner"
+          "app.kubernetes.io/name" = local.drone_runner_appname
         }
       }
 
@@ -348,7 +349,7 @@ resource "kubernetes_deployment" "drone_runner" {
         automount_service_account_token = true
 
         container {
-          name  = "drone-runner"
+          name  = local.drone_runner_appname
           image = "drone/drone-runner-kube:latest"
 
           port {
