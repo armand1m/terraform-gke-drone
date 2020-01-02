@@ -74,6 +74,10 @@ resource "google_compute_disk" "ci" {
   size = 5
 }
 
+resource "google_compute_address" "drone_server_ip" {
+  name = "drone-server-external-address"
+}
+
 resource "kubernetes_namespace" "drone" {
   # This is needed for tearing it down
   depends_on = [google_container_node_pool.primary_preemptible_nodes]
@@ -103,7 +107,7 @@ resource "kubernetes_config_map" "drone" {
   data = {
     drone_agents_enabled       = true
     drone_server_proto         = "http"
-    drone_server_host          = kubernetes_service.drone_server.load_balancer_ingress[0].ip
+    drone_server_host          = google_compute_address.drone_server_ip.address
     drone_github_server        = "https://github.com"
     drone_github_client_id     = var.drone_github_client_id
     drone_github_client_secret = var.drone_github_client_secret
@@ -247,6 +251,8 @@ resource "kubernetes_service" "drone_server" {
   }
 
   spec {
+    load_balancer_ip = google_compute_address.drone_server_ip.address
+
     selector = {
       app = "${kubernetes_deployment.drone_server.metadata[0].labels.app}"
     }
