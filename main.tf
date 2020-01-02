@@ -271,10 +271,134 @@ resource "kubernetes_service" "drone_server" {
     }
 
     port {
-      port        = 8080
+      name        = "http"
+      port        = 80
       target_port = 80
     }
 
+    port {
+      name        = "https"
+      port        = 443
+      target_port = 443
+    }
+
     type = "LoadBalancer"
+  }
+}
+
+resource "kubernetes_service_account" "drone_runner" {
+  metadata {
+    name      = "drone-runner"
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
+}
+
+resource "kubernetes_role" "drone_runner" {
+  metadata {
+    name      = "drone-runner-role"
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
+
+  rule {
+    verbs      = ["create", "delete"]
+    api_groups = [""]
+    resources  = ["secrets"]
+  }
+
+  rule {
+    verbs      = ["get", "create", "delete", "list", "watch", "update"]
+    api_groups = [""]
+    resources  = ["pods", "pods/log"]
+  }
+}
+
+resource "kubernetes_role_binding" "drone_runner" {
+  metadata {
+    name      = "drone-runner-role-binding"
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
+
+  subject {
+    kind      = "ServiceAccount"
+    name      = kubernetes_service_account.drone_runner.metadata[0].name
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = kubernetes_role.drone_runner.metadata[0].name
+  }
+}
+
+resource "kubernetes_deployment" "drone_runner" {
+  metadata {
+    name = "drone-runner"
+    namespace = kubernetes_namespace.drone.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name" = "drone-runner"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        "app.kubernetes.io/name" = "drone-runner"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          "app.kubernetes.io/name" = "drone-runner"
+        }
+      }
+
+      spec {
+        service_account_name = kubernetes_service_account.drone_runner.metadata[0].name
+        automount_service_account_token = true
+
+        container {
+          name  = "drone-runner"
+          image = "drone/drone-runner-kube:latest"
+
+          port {
+            container_port = 3000
+          }
+
+          env {
+            name = "DRONE_RPC_HOST"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_server_host"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_RPC_PROTO"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_server_proto"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_RPC_SECRET"
+            value_from {
+              secret_key_ref {
+                name = local.drone_secrets_name
+                key  = "server_secret"
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

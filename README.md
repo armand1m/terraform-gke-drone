@@ -2,25 +2,36 @@
 
 This is a terraform definition with some scripts to make it easy to bootstrap Drone CI into a GKE cluster with DNS management included.
 
-It will provision:
+The scripts can:
 
- - [x] A GKE cluster with a separatelly managed preemptible node pool
+ - [x] Enable and disable gcloud services
+ - [x] Create and destroy terraform service accounts with editor roles
+
+The terraform definition can provision:
+
+ - [x] GKE cluster
     - [x] Random Master Password Generation
- - [x] A GCE Persistent Disk to store Drone CI master configuration and data
- - [x] A GCP Cloud DNS Managed Zone for the variable `domain_name`
- - [x] A GCP DNS Record Set for the CNAME of your `domain_name`
+    - [x] Separate managed node pool
+        - [x] Using Preemptible Instances
+ - [x] GCE Persistent Disk to store Drone CI master configuration and data
+ - [x] GCP Cloud DNS Managed Zone for the variable `domain_name`
+ - [x] GCP DNS Record Set for the CNAME of your `domain_name`
  - [x] All Kubernetes resources Drone CI needs to run:
-    - [x] A namespace `drone`
-    - [x] A secret `drone-secrets` with the RPC secret stored
+    - [x] Namespace `drone`
+    - [x] Secret `drone-secrets` with the RPC secret stored
         - [x] Random Secret Generation
-    - [x] A config map `drone-config` with all configuration for server and runners
-    - [x] A deployment for the Drone Server 
+    - [x] ConfigMap `drone-config` with all configuration for server and runners
+    - [x] Deployment for the Drone Server 
         - [x] Environment Variables loaded from Config Map
         - [x] Environment Variables loaded from Secret
         - [x] Volumes mounted from GCE Persistent Disk
-    - [x] A service as an ingress load balancer to the Drone Server
-    - [x] A DNS Record Set at `drone.${var.domain_name}` to point to the ingress load balancer.
-    - [ ] A deployment for the Drone Runner
+    - [x] Service as an ingress load balancer to the Drone Server
+    - [x] DNS Record Set at `drone.${var.domain_name}` to point to the ingress load balancer.
+    - [x] Role for the Drone Runner
+    - [x] Role Binding for the Drone Runner
+    - [x] Service Account for the Drone Runner
+    - [x] A deployment for the Drone Runner
+        - [x] With Service Account binded
     - [ ] Cert Manager for automatic SSL certificate generation
 
 ## Prepare the environment
