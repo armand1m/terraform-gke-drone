@@ -15,6 +15,7 @@ The terraform definition can provision:
     - [x] Random Master Password Generation
     - [x] Separate managed node pool
         - [x] Using Preemptible Instances
+ - [x] GCE External IP Address
  - [x] GCE Persistent Disk to store Drone CI master configuration and data
  - [x] All Kubernetes resources Drone CI needs to run:
     - [x] Namespace `drone`
@@ -26,6 +27,7 @@ The terraform definition can provision:
         - [x] Environment Variables loaded from Secret
         - [x] Volumes mounted from GCE Persistent Disk
     - [x] Service as an ingress load balancer to the Drone Server
+        - [x] With GCE External IP Address Assigned
     - [x] Role for the Drone Runner
     - [x] Role Binding for the Drone Runner
     - [x] Service Account for the Drone Runner
