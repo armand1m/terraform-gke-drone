@@ -1,0 +1,23 @@
+kind: pipeline
+type: kubernetes
+name: "Terraform Acceptance"
+
+steps:
+- name: install-terraform
+  image: golang:alpine
+  commands:
+  - apk add --update curl unzip
+  - curl -L0 https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip --output terraform.zip
+  - unzip ./terraform.zip
+- name: test-manifest
+  image: golang:alpine
+  commands:
+  - ./terraform init  
+  - >
+    cat > ./variables.tfvars <<EOL
+      gcloud_region              = "us-central1"
+      gcloud_zone                = "us-central1-c"
+      drone_github_client_id     = "github-client-id"
+      drone_github_client_secret = "github-client-secret"
+    EOL
+  - ./terraform plan -var-file=./variables.tfvars
