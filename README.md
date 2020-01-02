@@ -45,7 +45,7 @@ The terraform definition can provision:
 
 Create a Github OAuth Application so you can have a Github Client ID and a Github Client Secret.
 
-<img alt="github-oauth" src="https://github.com/armand1m/terraform-gke-drone/blob/master/.github/assets/drone-oauth-config.png?raw=true" />
+<img alt="github-oauth" src="https://github.com/armand1m/terraform-gke-drone/blob/master/.github/drone-oauth-config.png?raw=true" />
 
 ### Set terraform variables
 
@@ -99,7 +99,7 @@ Edit your Github OAuth application to use the `drone_server_external_ip` output.
 
 ### Access and enjoy
 
-<img alt="drone-homepage" src="https://github.com/armand1m/terraform-gke-drone/blob/master/.github/assets/drone-homepage.png?raw=true" />
+<img alt="drone-homepage" src="https://github.com/armand1m/terraform-gke-drone/blob/master/.github/drone-homepage.png?raw=true" />
 
 ## Tearing it down
 
