@@ -13,6 +13,11 @@ variable "domain_name" { type = string }
 variable "drone_github_client_id" { type = string }
 variable "drone_github_client_secret" { type = string }
 
+locals {
+  drone_secrets_name   = "drone-secrets"
+  drone_configmap_name = "drone-config"
+}
+
 resource "random_password" "drone_server_secret" {
   length  = 16
   special = false
@@ -63,97 +68,6 @@ resource "google_compute_disk" "ci" {
   size = 5
 }
 
-resource "kubernetes_namespace" "drone" {
-  # This is needed for tearing it down
-  depends_on = [google_container_node_pool.primary_preemptible_nodes]
-
-  metadata {
-    name = "drone"
-  }
-}
-
-resource "kubernetes_secret" "drone" {
-  metadata {
-    name      = "drone-secrets"
-    namespace = kubernetes_namespace.drone.metadata[0].name
-  }
-
-  data = {
-    server_secret = random_password.drone_server_secret.result
-  }
-}
-
-resource "kubernetes_config_map" "drone" {
-  metadata {
-    name      = "drone-config"
-    namespace = kubernetes_namespace.drone.metadata[0].name
-  }
-
-  data = {
-    drone_agents_enabled       = true
-    drone_server_proto         = "https"
-    drone_server_host          = "drone.${var.domain_name}"
-    drone_github_server        = "https://github.com"
-    drone_github_client_id     = var.drone_github_client_id
-    drone_github_client_secret = var.drone_github_client_secret
-  }
-}
-
-resource "kubernetes_service" "example" {
-  metadata {
-    name      = "terraform-example"
-    namespace = kubernetes_namespace.drone.metadata[0].name
-  }
-
-  spec {
-    selector = {
-      app = "${kubernetes_deployment.example.metadata.0.labels.app}"
-    }
-
-    port {
-      port        = 8080
-      target_port = 80
-    }
-
-    type = "LoadBalancer"
-  }
-}
-
-resource "kubernetes_deployment" "example" {
-  metadata {
-    name      = "terraform-example"
-    namespace = kubernetes_namespace.drone.metadata[0].name
-    labels = {
-      app = "MyExampleApp"
-    }
-  }
-
-  spec {
-    replicas = 3
-
-    selector {
-      match_labels = {
-        app = "MyExampleApp"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "MyExampleApp"
-        }
-      }
-
-      spec {
-        container {
-          image = "nginx:1.7.8"
-          name  = "example"
-        }
-      }
-    }
-  }
-}
-
 resource "google_dns_managed_zone" "main" {
   name        = "main-zone"
   dns_name    = "${var.domain_name}."
@@ -168,22 +82,199 @@ resource "google_dns_record_set" "cname" {
   rrdatas      = ["www.${google_dns_managed_zone.main.dns_name}"]
 }
 
-resource "google_dns_record_set" "example" {
-  name = "example.${google_dns_managed_zone.main.dns_name}"
+resource "google_dns_record_set" "drone" {
+  name = "drone.${google_dns_managed_zone.main.dns_name}"
   type = "A"
   ttl  = 300
 
   managed_zone = google_dns_managed_zone.main.name
 
   rrdatas = [
-    kubernetes_service.example.load_balancer_ingress[0].ip
+    kubernetes_service.drone_server.load_balancer_ingress[0].ip
   ]
 }
 
-# resource "kubernetes_deployment" "drone-server" {
+resource "kubernetes_namespace" "drone" {
+  # This is needed for tearing it down
+  depends_on = [google_container_node_pool.primary_preemptible_nodes]
 
-# }
+  metadata {
+    name = "drone"
+  }
+}
 
-# resource "kubernetes_deployment" "drone-agent" {
+resource "kubernetes_secret" "drone" {
+  metadata {
+    name      = local.drone_secrets_name
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
 
-# }
+  data = {
+    server_secret = random_password.drone_server_secret.result
+  }
+}
+
+resource "kubernetes_config_map" "drone" {
+  metadata {
+    name      = local.drone_configmap_name
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
+
+  data = {
+    drone_agents_enabled       = true
+    drone_server_proto         = "https"
+    drone_server_host          = "drone.${var.domain_name}"
+    drone_github_server        = "https://github.com"
+    drone_github_client_id     = var.drone_github_client_id
+    drone_github_client_secret = var.drone_github_client_secret
+  }
+}
+
+resource "kubernetes_deployment" "drone_server" {
+  metadata {
+    name      = "drone-server"
+    namespace = kubernetes_namespace.drone.metadata[0].name
+    labels = {
+      app = "DroneServer"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "DroneServer"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "DroneServer"
+        }
+      }
+
+      spec {
+        container {
+          name  = "drone-server"
+          image = "drone/drone:1"
+
+          port {
+            container_port = 80
+            protocol       = "TCP"
+          }
+
+          port {
+            container_port = 443
+            protocol       = "TCP"
+          }
+
+          env {
+            name = "DRONE_AGENTS_ENABLED"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_agents_enabled"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_GITHUB_SERVER"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_github_server"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_GITHUB_CLIENT_ID"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_github_client_id"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_GITHUB_CLIENT_SECRET"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_github_client_secret"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_SERVER_HOST"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_server_host"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_SERVER_PROTO"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_server_proto"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_RPC_SECRET"
+
+            value_from {
+              secret_key_ref {
+                name = local.drone_secrets_name
+                key  = "server_secret"
+              }
+            }
+          }
+
+          volume_mount {
+            name       = google_compute_disk.ci.name
+            mount_path = "/var/lib/drone"
+          }
+        }
+
+        volume {
+          name = google_compute_disk.ci.name
+          gce_persistent_disk {
+            pd_name = google_compute_disk.ci.name
+            fs_type = "ext4"
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "drone_server" {
+  metadata {
+    name      = "drone-server-service"
+    namespace = kubernetes_namespace.drone.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "${kubernetes_deployment.drone_server.metadata[0].labels.app}"
+    }
+
+    port {
+      port        = 8080
+      target_port = 80
+    }
+
+    type = "LoadBalancer"
+  }
+}
