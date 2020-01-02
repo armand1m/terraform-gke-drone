@@ -127,6 +127,7 @@ resource "kubernetes_config_map" "drone" {
     drone_github_server        = "https://github.com"
     drone_github_client_id     = var.drone_github_client_id
     drone_github_client_secret = var.drone_github_client_secret
+    drone_runner_namespace     = kubernetes_namespace.drone.metadata[0].name
   }
 }
 
@@ -394,6 +395,16 @@ resource "kubernetes_deployment" "drone_runner" {
               secret_key_ref {
                 name = local.drone_secrets_name
                 key  = "server_secret"
+              }
+            }
+          }
+
+          env {
+            name = "DRONE_NAMESPACE_DEFAULT"
+            value_from {
+              config_map_key_ref {
+                name = local.drone_configmap_name
+                key  = "drone_runner_namespace"
               }
             }
           }
