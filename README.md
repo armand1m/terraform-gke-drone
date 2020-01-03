@@ -1,5 +1,9 @@
 # Drone CI on GCP with Terraform and Kubernetes
 
+**Fun Fact:** This project CI definition itself runs in the infrastructure it deploys 😄
+
+[![Build Status](http://34.66.12.76/api/badges/armand1m/terraform-gke-drone/status.svg)](http://34.66.12.76/armand1m/terraform-gke-drone)
+
 This is a terraform definition with some scripts to make it easy to bootstrap https://drone.io into a GKE cluster using:
 
  - GitHub as default VCS
