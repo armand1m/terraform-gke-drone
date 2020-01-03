@@ -230,7 +230,7 @@ resource "kubernetes_deployment" "drone_server" {
 
           volume_mount {
             name       = google_compute_disk.drone_server.name
-            mount_path = "/var/lib/drone"
+            mount_path = "/data"
           }
         }
 
