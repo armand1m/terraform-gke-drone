@@ -9,7 +9,6 @@ provider "kubernetes" {
   load_config_file = false
   host                   = google_container_cluster.drone.endpoint
   username               = google_container_cluster.drone.master_auth[0].username
-  password               = google_container_cluster.drone.master_auth[0].password
   client_key             = base64decode(google_container_cluster.drone.master_auth[0].client_key)
   client_certificate     = base64decode(google_container_cluster.drone.master_auth[0].client_certificate)
   cluster_ca_certificate = base64decode(google_container_cluster.drone.master_auth[0].cluster_ca_certificate)
