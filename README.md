@@ -1,6 +1,10 @@
 # Drone CI on GCP with Terraform and Kubernetes
 
-This is a terraform definition with some scripts to make it easy to bootstrap Drone CI into a GKE cluster using Github as the default VCS and `drone-runner-kube` as a runner.
+This is a terraform definition with some scripts to make it easy to bootstrap https://drone.io into a GKE cluster using:
+
+ - GitHub as default VCS
+ - `drone-runner-kube` as runner
+ - `sqlite` as a database, stored in a GCE Persistent Disk
 
 This will expose your Drone CI server in a public IP without TLS. Terraform will output the IP for you.
 
