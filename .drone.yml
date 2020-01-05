@@ -24,7 +24,8 @@ steps:
     TERRAFORM_STATE_PREFIX:
       from_secret: terraform-state-prefix
   commands:
-  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
+  - echo $TERRAFORM_SERVICE_ACCOUNT > ./credentials.json
+  - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
   - >
     cat > ./variables.tfvars <<EOL
       gcloud_region              = "us-central1"
