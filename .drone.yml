@@ -17,11 +17,14 @@ steps:
       from_secret: github-client-id
     GITHUB_CLIENT_SECRET:
       from_secret: github-client-secret
+    TERRAFORM_SERVICE_ACCOUNT:
+      from_secret: terraform-service-account
     TERRAFORM_STATE_BUCKET_NAME:
       from_secret: terraform-state-bucket-name
     TERRAFORM_STATE_PREFIX:
       from_secret: terraform-state-prefix
   commands:
+  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
   - >
     cat > ./variables.tfvars <<EOL
       gcloud_region              = "us-central1"
