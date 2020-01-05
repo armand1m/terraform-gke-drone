@@ -22,7 +22,6 @@ steps:
     TERRAFORM_STATE_PREFIX:
       from_secret: terraform-state-prefix
   commands:
-  - ./terraform init 
   - >
     cat > ./variables.tfvars <<EOL
       gcloud_region              = "us-central1"
@@ -35,6 +34,7 @@ steps:
       bucket  = "$TERRAFORM_STATE_BUCKET_NAME"
       prefix  = "$TERRAFORM_STATE_PREFIX"
     EOL
+  - ./terraform init -backend-config=./backend.tfvars
 - name: terraform-plan
   image: google/cloud-sdk:alpine
   environment:
