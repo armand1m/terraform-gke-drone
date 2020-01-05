@@ -2,13 +2,6 @@ kind: pipeline
 type: kubernetes
 name: "Terraform Acceptance"
 
-environment:
-  TERRAFORM_SERVICE_ACCOUNT:
-    from_secret: "terraform-service-account"
-  GITHUB_CLIENT_ID:
-    from_secret: "github-client-id"
-  GITHUB_CLIENT_SECRET:
-    from_secret: "github-client-secret"
     
 steps:
 - name: install-terraform
@@ -19,6 +12,13 @@ steps:
   - unzip ./terraform.zip
 - name: test-manifest
   image: google/cloud-sdk:latest
+  environment:
+    TERRAFORM_SERVICE_ACCOUNT:
+      from_secret: terraform-service-account
+    GITHUB_CLIENT_ID:
+      from_secret: github-client-id
+    GITHUB_CLIENT_SECRET:
+      from_secret: github-client-secret
   commands:
   - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
   - ./terraform init 
