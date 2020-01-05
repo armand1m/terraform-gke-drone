@@ -15,12 +15,16 @@ steps:
   environment:
     TERRAFORM_SERVICE_ACCOUNT:
       from_secret: terraform-service-account
+    TERRAFORM_SERVICE_ACCOUNT_NAME:
+      from_secret: terraform-service-account-name
+    GCLOUD_PROJECT_NAME:
+      from-secret: gcloud-project-name
     GITHUB_CLIENT_ID:
       from_secret: github-client-id
     GITHUB_CLIENT_SECRET:
       from_secret: github-client-secret
   commands:
-  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
+  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account $TERRAFORM_SERVICE_ACCOUNT_NAME@$GCLOUD_PROJECT_NAME.iam.gserviceaccount.com --key-file=-
   - ./terraform init 
   - >
     cat > ./variables.tfvars <<EOL
