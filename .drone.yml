@@ -39,5 +39,5 @@ steps:
       drone_github_client_secret = "$GITHUB_CLIENT_SECRET"
     EOL
   - cat ./variables.tfvars
-  - ./kubectl version
+  - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform plan -var-file=./variables.tfvars
