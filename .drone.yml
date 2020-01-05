@@ -13,14 +13,11 @@ steps:
 - name: prepare-environment
   image: google/cloud-sdk:alpine
   environment:
-    TERRAFORM_SERVICE_ACCOUNT:
-      from_secret: terraform-service-account
     GITHUB_CLIENT_ID:
       from_secret: github-client-id
     GITHUB_CLIENT_SECRET:
       from_secret: github-client-secret
   commands:
-  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
   - ./terraform init 
   - >
     cat > ./variables.tfvars <<EOL
@@ -29,10 +26,14 @@ steps:
       drone_github_client_id     = "$GITHUB_CLIENT_ID"
       drone_github_client_secret = "$GITHUB_CLIENT_SECRET"
     EOL
-  - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
 - name: terraform-plan
   image: google/cloud-sdk:alpine
-  commands:  
+  environment:
+    TERRAFORM_SERVICE_ACCOUNT:
+      from_secret: terraform-service-account
+  commands:
+  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
+  - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform plan -var-file=./variables.tfvars
 - name: terraform-apply
   image: google/cloud-sdk:alpine
