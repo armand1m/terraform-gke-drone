@@ -25,6 +25,7 @@ steps:
       from_secret: github-client-secret
   commands:
   - echo "$TERRAFORM_SERVICE_ACCOUNT" > ./credentials.json
+  - base64 -i ./credentials.json
   - gcloud auth activate-service-account $TERRAFORM_SERVICE_ACCOUNT_NAME@$GCLOUD_PROJECT_NAME.iam.gserviceaccount.com --key-file=./credentials.json
   - ./terraform init 
   - >
