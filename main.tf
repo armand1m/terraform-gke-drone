@@ -51,7 +51,7 @@ resource "google_container_cluster" "drone" {
 resource "google_container_node_pool" "primary_preemptible_nodes" {
   name       = "drone-cluster-pool"
   cluster    = google_container_cluster.drone.name
-  node_count = 1
+  node_count = 2
 
   node_config {
     preemptible  = true
@@ -71,6 +71,12 @@ resource "google_container_node_pool" "primary_preemptible_nodes" {
 resource "google_compute_disk" "drone_server" {
   name = "drone-server-sqlite"
   size = 5
+
+  # GCE by default adds this label
+  # Keeping it avoids Terraform from applying useless changes
+  labels = {
+    goog-gke-volume = ""
+  }
 }
 
 resource "google_compute_address" "drone_server" {
