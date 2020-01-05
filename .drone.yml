@@ -33,4 +33,6 @@ steps:
       drone_github_client_id     = "$GITHUB_CLIENT_ID"
       drone_github_client_secret = "$GITHUB_CLIENT_SECRET"
     EOL
+  - cat ./variables.tfvars
+  - kubectl -v
   - ./terraform plan -var-file=./variables.tfvars
