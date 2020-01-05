@@ -39,5 +39,5 @@ steps:
       drone_github_client_secret = "$GITHUB_CLIENT_SECRET"
     EOL
   - cat ./variables.tfvars
-  - ./kubectl -v
+  - ./kubectl version
   - ./terraform plan -var-file=./variables.tfvars
