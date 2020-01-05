@@ -41,9 +41,6 @@ steps:
   - ./terraform init -backend-config=./backend.tfvars
 - name: terraform-plan
   image: google/cloud-sdk:alpine
-  environment:
-    TERRAFORM_SERVICE_ACCOUNT:
-      from_secret: terraform-service-account
   commands:
   - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
   - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
@@ -52,7 +49,10 @@ steps:
 - name: terraform-apply
   image: google/cloud-sdk:alpine
   commands:
-  - ./terraform apply -var-file=./variables.tfvars
+  - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
+  - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+  - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
+  - ./terraform apply -var-file=./variables.tfvars -auto-approve
   when:
     branch:
     - master
