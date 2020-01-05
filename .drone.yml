@@ -54,6 +54,5 @@ steps:
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform apply -var-file=./variables.tfvars -auto-approve
   when:
-    branch:
-      include:
-      - master
+    ref:
+    - refs/heads/master
