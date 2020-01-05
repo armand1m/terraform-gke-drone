@@ -5,9 +5,9 @@ name: "Terraform Acceptance"
     
 steps:
 - name: install-terraform
-  image: google/cloud-sdk:latest
+  image: google/cloud-sdk:alpine
   commands:
-  - apt install unzip -y
+  - apk add --update curl unzip -y
   - curl -L0 https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip --output terraform.zip
   - unzip ./terraform.zip
 - name: prepare-environment
