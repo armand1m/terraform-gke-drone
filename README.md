@@ -76,6 +76,24 @@ gcloud auth login
 gcloud config set project [PROJECT-ID]
 ```
 
+### Create terraform backend GCS
+
+Here we're using GCS to store remote terraform state, so you need to create a bucket and a backend configuration file.
+
+```sh
+# This script will output a terraform-state-[hex] bucket name for you
+./scripts/create-terraform-state-gcs.sh
+```
+
+Get the gcs name and then generate a `./backend.tfvars` file
+
+```sh
+cat > ./backend.tfvars <<EOL
+bucket  = "terraform-state-[hex]"
+prefix  = "production"
+EOL
+```
+
 ### Bring it up
 
 ```sh
@@ -84,7 +102,7 @@ source ./scripts/_shared.sh
 ./scripts/enable-gcloud-services.sh
 ./scripts/create-terraform-service-account.sh
 
-terraform init
+terraform init -backend-config=./backend.tfvars
 terraform plan -var-file=./variables.tfvars
 terraform apply -var-file=./variables.tfvars
 ```

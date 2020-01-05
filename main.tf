@@ -1,3 +1,7 @@
+terraform {
+  backend "gcs" {}
+}
+
 provider "random" {}
 
 provider "google" {

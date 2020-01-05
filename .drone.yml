@@ -17,6 +17,10 @@ steps:
       from_secret: github-client-id
     GITHUB_CLIENT_SECRET:
       from_secret: github-client-secret
+    TERRAFORM_STATE_BUCKET_NAME:
+      from_secret: terraform-state-bucket-name
+    TERRAFORM_STATE_PREFIX:
+      from_secret: terraform-state-prefix
   commands:
   - ./terraform init 
   - >
@@ -25,6 +29,11 @@ steps:
       gcloud_zone                = "us-central1-c"
       drone_github_client_id     = "$GITHUB_CLIENT_ID"
       drone_github_client_secret = "$GITHUB_CLIENT_SECRET"
+    EOL
+  - >
+    cat > ./backend.tfvars <<EOL
+      bucket  = "$TERRAFORM_STATE_BUCKET_NAME"
+      prefix  = "$TERRAFORM_STATE_PREFIX"
     EOL
 - name: terraform-plan
   image: google/cloud-sdk:alpine
