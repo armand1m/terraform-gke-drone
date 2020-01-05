@@ -46,6 +46,7 @@ steps:
       from_secret: terraform-service-account
   commands:
   - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
+  - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform plan -var-file=./variables.tfvars
 - name: terraform-apply
   image: google/cloud-sdk:alpine
