@@ -2,22 +2,31 @@ kind: pipeline
 type: kubernetes
 name: "Terraform Acceptance"
 
+environment:
+  TERRAFORM_SERVICE_ACCOUNT:
+    from_secret: terraform-service-account
+  GITHUB_CLIENT_ID:
+    from_secret: github-client-id
+  GITHUB_CLIENT_SECRET:
+    from_secret: github-client-secret
+    
 steps:
 - name: install-terraform
-  image: golang:alpine
+  image: google/cloud-sdk:latest
   commands:
   - apk add --update curl unzip
   - curl -L0 https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip --output terraform.zip
   - unzip ./terraform.zip
 - name: test-manifest
-  image: golang:alpine
+  image: google/cloud-sdk:latest
   commands:
-  - ./terraform init  
+  - echo $TERRAFORM_SERVICE_ACCOUNT | gcloud auth activate-service-account --key-file=-
+  - ./terraform init 
   - >
     cat > ./variables.tfvars <<EOL
       gcloud_region              = "us-central1"
       gcloud_zone                = "us-central1-c"
-      drone_github_client_id     = "github-client-id"
-      drone_github_client_secret = "github-client-secret"
+      drone_github_client_id     = "$GITHUB_CLIENT_ID"
+      drone_github_client_secret = "$GITHUB_CLIENT_SECRET"
     EOL
   - ./terraform plan -var-file=./variables.tfvars
