@@ -5,13 +5,13 @@ name: "Terraform Acceptance"
     
 steps:
 - name: install-terraform
-  image: armand1m/cloud-sdk-with-credentials:latest
+  image: google/cloud-sdk:alpine
   commands:
   - apk add --update unzip
   - curl -L0 https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip --output terraform.zip
   - unzip ./terraform.zip
 - name: prepare-environment
-  image: armand1m/cloud-sdk-with-credentials:latest
+  image: google/cloud-sdk:alpine
   environment:
     GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
     GITHUB_CLIENT_ID:
@@ -40,7 +40,7 @@ steps:
     EOL
   - ./terraform init -backend-config=./backend.tfvars -input=false
 - name: terraform-plan
-  image: armand1m/cloud-sdk-with-credentials:latest
+  image: google/cloud-sdk:alpine
   environment:
     GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
   commands:
@@ -48,7 +48,7 @@ steps:
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform plan -out=tfplan -var-file=./variables.tfvars -input=false
 - name: terraform-apply
-  image: armand1m/cloud-sdk-with-credentials:latest
+  image: google/cloud-sdk:alpine
   environment:
     GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
   commands:
