@@ -54,7 +54,7 @@ steps:
   commands:
   - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
-  - ./terraform apply -input=false -var-file=./variables.tfvars -auto-approve tfplan
+  - ./terraform apply -input=false -auto-approve tfplan
   when:
     ref:
     - refs/heads/master
