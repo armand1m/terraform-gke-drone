@@ -13,6 +13,7 @@ steps:
 - name: prepare-environment
   image: google/cloud-sdk:alpine
   environment:
+    GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
     GITHUB_CLIENT_ID:
       from_secret: github-client-id
     GITHUB_CLIENT_SECRET:
@@ -22,10 +23,9 @@ steps:
     TERRAFORM_STATE_BUCKET_NAME:
       from_secret: terraform-state-bucket-name
     TERRAFORM_STATE_PREFIX:
-      from_secret: terraform-state-prefix
+      from_secret: terraform-state-prefix 
   commands:
-  - echo $TERRAFORM_SERVICE_ACCOUNT > ./credentials.json
-  - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
+  - echo $TERRAFORM_SERVICE_ACCOUNT > $GOOGLE_APPLICATION_CREDENTIALS
   - >
     cat > ./variables.tfvars <<EOL
       gcloud_region              = "us-central1"
@@ -38,21 +38,23 @@ steps:
       bucket  = "$TERRAFORM_STATE_BUCKET_NAME"
       prefix  = "$TERRAFORM_STATE_PREFIX"
     EOL
-  - ./terraform init -backend-config=./backend.tfvars
+  - ./terraform init -backend-config=./backend.tfvars -input=false
 - name: terraform-plan
   image: google/cloud-sdk:alpine
+  environment:
+    GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
   commands:
-  - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
   - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
-  - ./terraform plan -var-file=./variables.tfvars
+  - ./terraform plan -out=tfplan -var-file=./variables.tfvars -input=false
 - name: terraform-apply
   image: google/cloud-sdk:alpine
+  environment:
+    GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
   commands:
-  - export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
   - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
-  - ./terraform apply -var-file=./variables.tfvars -auto-approve
+  - ./terraform apply -input=false -var-file=./variables.tfvars -auto-approve tfplan
   when:
     ref:
     - refs/heads/master
