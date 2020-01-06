@@ -5,27 +5,26 @@ name: "Terraform Acceptance"
     
 steps:
 - name: install-terraform
-  image: google/cloud-sdk:alpine
+  image: armand1m/cloud-sdk-with-credentials:latest
   commands:
   - apk add --update unzip
   - curl -L0 https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip --output terraform.zip
   - unzip ./terraform.zip
 - name: prepare-environment
-  image: google/cloud-sdk:alpine
+  image: armand1m/cloud-sdk-with-credentials:latest
   environment:
     GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
     GITHUB_CLIENT_ID:
       from_secret: github-client-id
     GITHUB_CLIENT_SECRET:
       from_secret: github-client-secret
-    TERRAFORM_SERVICE_ACCOUNT:
+    SERVICE_ACCOUNT:
       from_secret: terraform-service-account
     TERRAFORM_STATE_BUCKET_NAME:
       from_secret: terraform-state-bucket-name
     TERRAFORM_STATE_PREFIX:
       from_secret: terraform-state-prefix 
   commands:
-  - echo $TERRAFORM_SERVICE_ACCOUNT > $GOOGLE_APPLICATION_CREDENTIALS
   - >
     cat > ./variables.tfvars <<EOL
       gcloud_region              = "us-central1"
@@ -40,19 +39,21 @@ steps:
     EOL
   - ./terraform init -backend-config=./backend.tfvars -input=false
 - name: terraform-plan
-  image: google/cloud-sdk:alpine
+  image: armand1m/cloud-sdk-with-credentials:latest
   environment:
     GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
+    SERVICE_ACCOUNT:
+      from_secret: terraform-service-account
   commands:
-  - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform plan -out=tfplan -var-file=./variables.tfvars -input=false
 - name: terraform-apply
-  image: google/cloud-sdk:alpine
+  image: armand1m/cloud-sdk-with-credentials:latest
   environment:
     GOOGLE_APPLICATION_CREDENTIALS: /drone/src/credentials.json
+    SERVICE_ACCOUNT:
+      from_secret: terraform-service-account
   commands:
-  - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
   - gcloud container clusters get-credentials drone-cluster --zone us-central1-c
   - ./terraform apply -input=false -var-file=./variables.tfvars -auto-approve tfplan
   when:
