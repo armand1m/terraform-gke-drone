@@ -10,6 +10,7 @@ provider "google" {
 }
 
 provider "kubernetes" {
+  load_config_file = false
   host                   = google_container_cluster.drone.endpoint
   username               = google_container_cluster.drone.master_auth[0].username
   password               = google_container_cluster.drone.master_auth[0].password
