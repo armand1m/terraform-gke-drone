@@ -58,7 +58,7 @@ resource "google_container_cluster" "drone" {
 resource "google_container_node_pool" "primary_preemptible_nodes" {
   name       = "drone-cluster-pool"
   cluster    = google_container_cluster.drone.name
-  node_count = 2
+  node_count = 1
 
   node_config {
     preemptible  = true
